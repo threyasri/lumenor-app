@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumenor — Solar Ecosystem</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <!-- Three.js for 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0A0A0A;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .btn-glow {
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow {
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(254, 154, 0, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 35px rgba(254, 154, 0, 0.7);
+            }
+        }
+
+        .input-group {
+            position: relative;
+        }
+        .input-group input,
+        .input-group select {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            width: 100%;
+            outline: none;
+            transition: border 0.3s;
+        }
+        .input-group input:focus,
+        .input-group select:focus {
+            border-color: #FE9A00;
+            box-shadow: 0 0 0 3px rgba(254, 154, 0, 0.2);
+        }
+        .input-group label {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            font-size: 0.9rem;
+            pointer-events: none;
+            transition: 0.2s ease;
+        }
+        .input-group input:focus~label,
+        .input-group input:not(:placeholder-shown)~label,
+        .input-group select:focus~label,
+        .input-group select:not(:placeholder-shown)~label {
+            top: 6px;
+            transform: translateY(0);
+            font-size: 0.7rem;
+            color: #FE9A00;
+            background: #0A0A0A;
+            padding: 0 6px;
+        }
+
+        .tilt-card {
+            transition: transform 0.1s ease;
+            transform-style: preserve-3d;
+            perspective: 800px;
+        }
+        .tilt-card-inner {
+            transition: box-shadow 0.3s ease;
+            background: #141414;
+            border: 1px solid #222;
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(4px);
+        }
+        .tilt-card:hover .tilt-card-inner {
+            border-color: #FE9A00;
+            box-shadow: 0 20px 40px -10px rgba(254, 154, 0, 0.15);
+        }
+
+        .fade-up {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.2, 0.9, 0.3, 1);
+        }
+        .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+        .toast {
+            background: #1e1e1e;
+            border-left: 4px solid #FE9A00;
+            padding: 14px 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            min-width: 260px;
+            pointer-events: auto;
+            animation: slideInToast 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+            font-size: 0.9rem;
+            border: 1px solid #2a2a2a;
+        }
+        .toast.removing {
+            animation: slideOutToast 0.4s cubic-bezier(0.4, 0, 1, 1) forwards;
+        }
+        @keyframes slideInToast {
+            from {
+                opacity: 0;
+                transform: translateX(60px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        @keyframes slideOutToast {
+            to {
+                opacity: 0;
+                transform: translateX(60px);
+            }
+        }
+
+        .mobile-nav {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+            background: #0f0f0f;
+            border-bottom: 1px solid #222;
+        }
+        .mobile-nav.open {
+            max-height: 400px;
+        }
+
+        #three-container {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        #three-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0A0A0A;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #FE9A00;
+            border-radius: 10px;
+        }
+
+        /* NEW: Feature Card Animations */
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: #FE9A00;
+            box-shadow: 0 10px 40px rgba(254, 154, 0, 0.1);
+        }
+
+        /* NEW: Live Map Dot Pulse */
+        .map-dot {
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 0.5;
+            }
+        }
+
+        /* NEW: Quiz Option Hover */
+        .quiz-option:hover {
+            border-color: #FE9A00 !important;
+            background: rgba(254, 154, 0, 0.1) !important;
+        }
+        .quiz-option.selected {
+            border-color: #FE9A00 !important;
+            background: rgba(254, 154, 0, 0.2) !important;
+        }
+
+        /* NEW: Leaderboard Entry */
+        .leaderboard-entry {
+            transition: all 0.3s ease;
+        }
+        .leaderboard-entry:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* NEW: Chart Bar Animation */
+        .chart-bar {
+            transition: height 0.8s cubic-bezier(0.2, 0.9, 0.3, 1);
+        }
+    </style>
+</head>
+<body>
+
+                       <!-- ========== NAVIGATION ========== -->
+    <nav class="fixed top-0 left-0 w-full z-50 bg-[#0A0A0A]/90 backdrop-blur-md border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-xl sm:text-2xl font-bold tracking-tight text-white">Lumenor</span>
+                    <span class="text-[#FE9A00] text-xs sm:text-sm font-medium bg-[#FE9A00]/10 px-2 py-0.5 rounded-full border border-[#FE9A00]/20 hidden sm:inline">v3</span>
+                </div>
+                
+                <!-- Desktop Navigation - FULLY RESPONSIVE WITH VISIBLE BUTTON -->
+                <div class="hidden lg:flex items-center gap-1 xl:gap-2 2xl:gap-4 text-xs xl:text-sm text-gray-300">
+                    <!-- Always visible -->
+                    <a href="#features" class="hover:text-[#FE9A00] transition whitespace-nowrap px-1">Features</a>
+                    
+                    <!-- Show only on large screens -->
+                    <a href="#ecosystem" class="hidden xl:inline hover:text-[#FE9A00] transition whitespace-nowrap px-1">Products</a>
+                    
+                    <!-- Always visible -->
+                    <a href="#simulator" class="hover:text-[#FE9A00] transition whitespace-nowrap px-1">Simulator</a>
+                    
+                    <!-- Show only on large screens -->
+                    <a href="#map" class="hidden xl:inline hover:text-[#FE9A00] transition whitespace-nowrap px-1">Live Map</a>
+                    
+                    <!-- Show only on extra large screens -->
+                    <a href="#roi" class="hidden 2xl:inline hover:text-[#FE9A00] transition whitespace-nowrap px-1">Savings</a>
+                    
+                    <!-- Show only on extra large screens -->
+                    <a href="#analytics" class="hidden 2xl:inline hover:text-[#FE9A00] transition whitespace-nowrap px-1">Analytics</a>
+                    
+                    <!-- Show only on extra large screens -->
+                    <a href="#referral" class="hidden 2xl:inline hover:text-[#FE9A00] transition whitespace-nowrap px-1">Leaderboard</a>
+                    
+                    <!-- Show only on extra large screens -->
+                    <a href="#quiz" class="hidden 2xl:inline hover:text-[#FE9A00] transition whitespace-nowrap px-1">Quiz</a>
+                    
+                    <!-- JOIN WAITLIST - ALWAYS VISIBLE AND FULLY SHOWN -->
+                    <a href="#waitlist" class="btn-glow px-3 xl:px-4 py-1.5 xl:py-2 bg-[#FE9A00] text-black font-semibold rounded-full text-xs xl:text-sm hover:scale-105 transition-transform whitespace-nowrap flex-shrink-0 ml-1">
+                        Join Waitlist
+                    </a>
+                </div>
+                
+                <!-- Mobile Hamburger -->
+                <button id="nav-toggle" class="lg:hidden text-white focus:outline-none flex-shrink-0">
+                    <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mobile Dropdown -->
+        <div id="mobile-nav" class="mobile-nav lg:hidden px-4 pb-4 flex flex-col gap-2 text-gray-300">
+            <a href="#features" class="py-2 hover:text-[#FE9A00] transition">Features</a>
+            <a href="#ecosystem" class="py-2 hover:text-[#FE9A00] transition">Products</a>
+            <a href="#simulator" class="py-2 hover:text-[#FE9A00] transition">Simulator</a>
+            <a href="#map" class="py-2 hover:text-[#FE9A00] transition">Live Map</a>
+            <a href="#roi" class="py-2 hover:text-[#FE9A00] transition">Savings</a>
+            <a href="#analytics" class="py-2 hover:text-[#FE9A00] transition">Analytics</a>
+            <a href="#referral" class="py-2 hover:text-[#FE9A00] transition">Leaderboard</a>
+            <a href="#quiz" class="py-2 hover:text-[#FE9A00] transition">Quiz</a>
+            <a href="#waitlist" class="text-center py-2 bg-[#FE9A00] text-black font-semibold rounded-full">Join Waitlist</a>
+        </div>
+    </nav>
+    <!-- ========== HERO SECTION ========== -->
+    <section id="hero" class="relative min-h-screen flex items-center overflow-hidden pt-20">
+        <div id="three-container"></div>
+        <div class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="space-y-8">
+                    <div class="inline-flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-full border border-white/10 text-sm text-gray-400">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        Connecting Solar India
+                    </div>
+                    <h1 class="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight">
+                        Power Your Future <br />
+                        <span class="text-[#FE9A00]">with Solar.</span>
+                    </h1>
+                    <p class="text-gray-400 text-lg max-w-lg">
+                        The ecosystem connecting Clients, EPCs, and Installers for seamless solar adoption.
+                    </p>
+                    <div class="flex flex-wrap gap-4">
+                        <a href="#waitlist" class="btn-glow px-8 py-3.5 bg-[#FE9A00] text-black font-semibold rounded-full hover:scale-105 transition-transform">
+                            Get Early Access
+                        </a>
+                        <a href="#ecosystem" class="px-8 py-3.5 border border-white/20 rounded-full hover:bg-white/5 transition">
+                            Explore Ecosystem
+                        </a>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 pt-6 border-t border-white/5">
+                        <div>
+                            <div class="text-2xl font-bold"><span id="metric-projects" data-target="1247">0</span>+</div>
+                            <div class="text-xs text-gray-500">Projects</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold"><span id="metric-epcs" data-target="312">0</span>+</div>
+                            <div class="text-xs text-gray-500">EPC Partners</div>
+                        </div>
+                        <div>
+                            <div class="text-2xl font-bold"><span id="metric-installers" data-target="849">0</span>+</div>
+                            <div class="text-xs text-gray-500">Installers</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hidden md:block"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== NEW FEATURES SHOWCASE ========== -->
+    <section id="features" class="py-24 bg-[#0f0f0f]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-[#FE9A00] font-semibold tracking-widest text-sm">WHAT'S NEW</span>
+                <h2 class="text-4xl md:text-5xl font-bold mt-2">Next-Gen Solar Features</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto mt-4">Experience the future of solar with our cutting-edge innovations.</p>
+            </div>
+
+            <div class="grid md:grid-cols-4 gap-6">
+                <div class="feature-card bg-[#141414] border border-white/5 rounded-2xl p-6 text-center fade-up" data-delay="100">
+                    <div class="text-4xl mb-3">☀️</div>
+                    <h3 class="font-bold">Live Simulator</h3>
+                    <p class="text-gray-400 text-sm mt-2">Watch solar energy generation in real-time</p>
+                    <span class="inline-block mt-3 text-xs bg-[#FE9A00]/20 text-[#FE9A00] px-3 py-1 rounded-full">NEW</span>
+                </div>
+                <div class="feature-card bg-[#141414] border border-white/5 rounded-2xl p-6 text-center fade-up" data-delay="200">
+                    <div class="text-4xl mb-3">📍</div>
+                    <h3 class="font-bold">Live Map</h3>
+                    <p class="text-gray-400 text-sm mt-2">Track active solar projects across India</p>
+                    <span class="inline-block mt-3 text-xs bg-[#FE9A00]/20 text-[#FE9A00] px-3 py-1 rounded-full">NEW</span>
+                </div>
+                <div class="feature-card bg-[#141414] border border-white/5 rounded-2xl p-6 text-center fade-up" data-delay="300">
+                    <div class="text-4xl mb-3">📊</div>
+                    <h3 class="font-bold">Smart Analytics</h3>
+                    <p class="text-gray-400 text-sm mt-2">5-year savings projection with AI insights</p>
+                    <span class="inline-block mt-3 text-xs bg-[#FE9A00]/20 text-[#FE9A00] px-3 py-1 rounded-full">NEW</span>
+                </div>
+                <div class="feature-card bg-[#141414] border border-white/5 rounded-2xl p-6 text-center fade-up" data-delay="400">
+                    <div class="text-4xl mb-3">🏆</div>
+                    <h3 class="font-bold">Leaderboard</h3>
+                    <p class="text-gray-400 text-sm mt-2">Gamified referral system with rewards</p>
+                    <span class="inline-block mt-3 text-xs bg-[#FE9A00]/20 text-[#FE9A00] px-3 py-1 rounded-full">NEW</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+       <!-- ========== SOLAR ENERGY SIMULATOR ========== -->
+    <section id="simulator" class="py-24 bg-[#0A0A0A]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="text-[#FE9A00] font-semibold tracking-widest text-sm">LIVE SIMULATION</span>
+                <h2 class="text-4xl md:text-5xl font-bold mt-2">Interactive Solar Simulator</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto mt-4">Drag the sun, change seasons, and watch energy production in real-time!</p>
+            </div>
+
+            <div class="bg-gradient-to-br from-[#141414] to-[#0a0a0a] border border-white/10 rounded-3xl p-6 md:p-10 fade-up">
+                <!-- Controls Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <div class="flex items-center gap-3">
+                        <button id="play-sim" class="px-4 py-2 bg-[#FE9A00]/20 text-[#FE9A00] rounded-full text-sm hover:bg-[#FE9A00]/30 transition">⏸️ Pause</button>
+                        <button id="reset-sim" class="px-4 py-2 border border-white/20 rounded-full text-sm hover:bg-white/5 transition">⟳ Reset</button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-gray-400">Speed:</span>
+                        <button class="speed-btn px-3 py-1 bg-[#FE9A00]/20 text-[#FE9A00] rounded-full text-xs hover:bg-[#FE9A00]/30 transition" data-speed="1">1x</button>
+                        <button class="speed-btn px-3 py-1 border border-white/20 rounded-full text-xs hover:bg-white/5 transition" data-speed="5">5x</button>
+                        <button class="speed-btn px-3 py-1 border border-white/20 rounded-full text-xs hover:bg-white/5 transition" data-speed="20">20x</button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-gray-400">Season:</span>
+                        <button class="season-btn px-3 py-1 bg-[#FE9A00]/20 text-[#FE9A00] rounded-full text-xs hover:bg-[#FE9A00]/30 transition" data-season="summer">☀️ Summer</button>
+                        <button class="season-btn px-3 py-1 border border-white/20 rounded-full text-xs hover:bg-white/5 transition" data-season="winter">❄️ Winter</button>
+                        <button class="season-btn px-3 py-1 border border-white/20 rounded-full text-xs hover:bg-white/5 transition" data-season="monsoon">🌧️ Monsoon</button>
+                    </div>
+                </div>
+
+                <!-- Main Simulation Area -->
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <div class="relative h-80 w-full bg-[#1a1a1a] rounded-2xl overflow-hidden border border-white/5">
+                            <!-- Sky Background -->
+                            <div id="sky-bg" class="absolute inset-0 bg-gradient-to-b from-blue-900/30 to-transparent transition-all duration-1000"></div>
+                            
+                            <!-- Sun (Draggable) -->
+                            <div id="sun-draggable" class="absolute w-12 h-12 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 shadow-2xl shadow-orange-500/50 cursor-grab transition-all duration-300" style="top: 15%; left: 20%;">
+                                <div class="absolute inset-0 rounded-full bg-yellow-400/30 blur-xl animate-pulse"></div>
+                            </div>
+                            
+                            <!-- Sun Path Arc -->
+                            <svg class="absolute inset-0 w-full h-full" style="pointer-events: none;">
+                                <path id="sun-path" d="M 10% 85% Q 50% 5% 90% 85%" stroke="rgba(255,200,100,0.1)" stroke-width="2" fill="none" stroke-dasharray="4 4"/>
+                            </svg>
+                            
+                            <!-- Solar Panels (Animated) -->
+                            <div id="panels-container" class="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex gap-2">
+                                <div class="panel w-10 h-16 bg-gradient-to-b from-blue-600 to-blue-800 rounded-t-lg transition-all duration-500" style="transform: rotate(10deg);"></div>
+                                <div class="panel w-10 h-16 bg-gradient-to-b from-blue-600 to-blue-800 rounded-t-lg transition-all duration-500" style="transform: rotate(5deg);"></div>
+                                <div class="panel w-10 h-16 bg-gradient-to-b from-blue-600 to-blue-800 rounded-t-lg transition-all duration-500" style="transform: rotate(0deg);"></div>
+                                <div class="panel w-10 h-16 bg-gradient-to-b from-blue-600 to-blue-800 rounded-t-lg transition-all duration-500" style="transform: rotate(-5deg);"></div>
+                                <div class="panel w-10 h-16 bg-gradient-to-b from-blue-600 to-blue-800 rounded-t-lg transition-all duration-500" style="transform: rotate(-10deg);"></div>
+                            </div>
+                            
+                            <!-- Energy Flow Lines -->
+                            <div id="energy-lines" class="absolute inset-0 pointer-events-none">
+                                <div class="energy-line absolute h-0.5 bg-yellow-400/30" style="width: 60%; top: 40%; left: 20%;"></div>
+                                <div class="energy-line absolute h-0.5 bg-yellow-400/20" style="width: 40%; top: 55%; left: 30%;"></div>
+                            </div>
+                            
+                            <!-- Time Display -->
+                            <div class="absolute top-4 right-4 bg-black/60 backdrop-blur px-4 py-2 rounded-full border border-white/10">
+                                <span class="text-sm font-mono text-[#FE9A00]" id="sim-time">06:00</span>
+                            </div>
+                            
+                            <!-- Energy Production Meter -->
+                            <div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
+                                <span class="text-xs text-gray-400">⚡</span>
+                                <div class="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
+                                    <div id="energy-meter" class="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-300" style="width: 0%;"></div>
+                                </div>
+                                <span class="text-xs text-[#FE9A00] font-bold" id="meter-percent">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Panel -->
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-white/5 rounded-2xl p-4 border border-white/5">
+                                <span class="text-gray-400 text-sm">Current Energy</span>
+                                <div class="text-3xl font-bold text-[#FE9A00]"><span id="current-energy">0</span> kW</div>
+                            </div>
+                            <div class="bg-white/5 rounded-2xl p-4 border border-white/5">
+                                <span class="text-gray-400 text-sm">Today's Savings</span>
+                                <div class="text-3xl font-bold text-green-400">₹<span id="today-savings">0</span></div>
+                            </div>
+                            <div class="bg-white/5 rounded-2xl p-4 border border-white/5">
+                                <span class="text-gray-400 text-sm">CO₂ Offset</span>
+                                <div class="text-3xl font-bold text-blue-400"><span id="today-co2">0</span> kg</div>
+                            </div>
+                            <div class="bg-white/5 rounded-2xl p-4 border border-white/5">
+                                <span class="text-gray-400 text-sm">Sun Position</span>
+                                <div class="text-3xl font-bold text-yellow-400"><span id="sun-angle">45</span>°</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Energy Production Graph -->
+                        <div class="bg-white/5 rounded-2xl p-4 border border-white/5">
+                            <span class="text-gray-400 text-sm">Energy Production Today</span>
+                            <div id="energy-graph" class="h-16 w-full flex items-end gap-1 mt-2">
+                                <!-- Graph bars generated by JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- Status Message -->
+                        <div id="status-message" class="text-center text-sm text-gray-400 py-2 px-4 bg-white/5 rounded-full border border-white/5">
+                            ☀️ Peak production hours: 10 AM - 3 PM
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== ECOSYSTEM ========== -->
+    <section id="ecosystem" class="py-24 bg-[#0f0f0f]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 fade-up">
+                <span class="text-[#FE9A00] font-semibold tracking-widest text-sm">ECOSYSTEM</span>
+                <h2 class="text-4xl md:text-5xl font-bold mt-2">Three Products. One Mission.</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto mt-4">Designed to connect every stakeholder in the solar journey.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="tilt-card fade-up" data-delay="100">
+                    <div class="tilt-card-inner">
+                        <div class="text-4xl mb-4">☀️</div>
+                        <h3 class="text-2xl font-bold">SolarX</h3>
+                        <p class="text-gray-400 text-sm mt-2">AI-powered site assessment &amp; project planning for Clients.</p>
+                        <ul class="mt-4 space-y-2 text-sm text-gray-300">
+                            <li class="flex items-center gap-2">✅ <span>Instant ROI estimates</span></li>
+                            <li class="flex items-center gap-2">✅ <span>Smart EPC matching</span></li>
+                        </ul>
+                        <button onclick="startDemo('SolarX')" class="mt-6 text-[#FE9A00] font-medium hover:underline">Try Demo →</button>
+                    </div>
+                </div>
+                <div class="tilt-card fade-up" data-delay="200">
+                    <div class="tilt-card-inner">
+                        <div class="text-4xl mb-4">🔗</div>
+                        <h3 class="text-2xl font-bold">FlowX</h3>
+                        <p class="text-gray-400 text-sm mt-2">Project management &amp; real-time tracking for EPCs.</p>
+                        <ul class="mt-4 space-y-2 text-sm text-gray-300">
+                            <li class="flex items-center gap-2">✅ <span>Live milestone updates</span></li>
+                            <li class="flex items-center gap-2">✅ <span>Client communication hub</span></li>
+                        </ul>
+                        <button onclick="startDemo('FlowX')" class="mt-6 text-[#FE9A00] font-medium hover:underline">Try Demo →</button>
+                    </div>
+                </div>
+                <div class="tilt-card fade-up" data-delay="300">
+                    <div class="tilt-card-inner">
+                        <div class="text-4xl mb-4">🛠️</div>
+                        <h3 class="text-2xl font-bold">FixX</h3>
+                        <p class="text-gray-400 text-sm mt-2">Service &amp; maintenance for Installers and end-users.</p>
+                        <ul class="mt-4 space-y-2 text-sm text-gray-300">
+                            <li class="flex items-center gap-2">✅ <span>Ticket management</span></li>
+                            <li class="flex items-center gap-2">✅ <span>Performance monitoring</span></li>
+                        </ul>
+                        <button onclick="startDemo('FixX')" class="mt-6 text-[#FE9A00] font-medium hover:underline">Try Demo →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+       <!-- ========== LIVE PROJECT MAP ========== -->
+    <section id="map" class="py-24 bg-[#0A0A0A]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="text-[#FE9A00] font-semibold tracking-widest text-sm">LIVE ACTIVITY</span>
+                <h2 class="text-4xl md:text-5xl font-bold mt-2">Solar Projects Across India</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto mt-4">Real-time map showing active solar installations. Hover on cities for details!</p>
+            </div>
+
+            <div class="bg-gradient-to-br from-[#141414] to-[#0a0a0a] border border-white/10 rounded-3xl p-6 md:p-10 fade-up">
+                <div class="grid lg:grid-cols-3 gap-6">
+                    <!-- Map Area -->
+                    <div class="lg:col-span-2">
+                        <div class="relative h-[500px] w-full bg-[#1a1a1a] rounded-2xl overflow-hidden border border-white/5">
+                            <!-- India Outline (Simplified) -->
+                            <div class="absolute inset-0 opacity-10 flex items-center justify-center text-9xl text-gray-600">🇮🇳</div>
+                            
+                            <!-- City Grid Lines -->
+                            <div class="absolute inset-0">
+                                <div class="absolute w-full h-px bg-white/5" style="top: 33%;"></div>
+                                <div class="absolute w-full h-px bg-white/5" style="top: 66%;"></div>
+                                <div class="absolute w-px h-full bg-white/5" style="left: 33%;"></div>
+                                <div class="absolute w-px h-full bg-white/5" style="left: 66%;"></div>
+                            </div>
+                            
+                            <!-- Connection Lines between cities -->
+                            <svg id="connection-lines" class="absolute inset-0 w-full h-full" style="pointer-events: none;">
+                                <!-- Lines added by JS -->
+                            </svg>
+                            
+                            <!-- City Dots Container -->
+                            <div id="project-dots" class="absolute inset-0"></div>
+                            
+                            <!-- City Labels -->
+                            <div id="city-labels" class="absolute inset-0 pointer-events-none"></div>
+                            
+                            <!-- Live Stats Overlay -->
+                            <div class="absolute top-4 left-4 bg-black/80 backdrop-blur px-4 py-3 rounded-xl border border-white/10">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                    <span class="text-sm text-gray-400">Live Projects:</span>
+                                    <span class="text-xl font-bold text-[#FE9A00]" id="live-projects">247</span>
+                                </div>
+                                <div class="flex items-center gap-3 mt-1">
+                                    <span class="text-sm text-gray-400">Active Cities:</span>
+                                    <span class="text-sm font-bold text-blue-400" id="active-cities">8</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Legend -->
+                            <div class="absolute bottom-4 left-4 bg-black/80 backdrop-blur px-4 py-2 rounded-xl border border-white/10 flex items-center gap-4 text-xs">
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-[#FE9A00]"></span>
+                                    <span class="text-gray-400">Active</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+                                    <span class="text-gray-400">New</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                                    <span class="text-gray-400">High Activity</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Live Activity Feed -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-[#1a1a1a] rounded-2xl border border-white/5 h-[500px] overflow-hidden flex flex-col">
+                            <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                                <span class="font-bold text-sm">📡 Live Activity Feed</span>
+                                <span class="text-xs text-green-400 animate-pulse">● Live</span>
+                            </div>
+                            <div id="activity-feed" class="flex-1 overflow-y-auto p-4 space-y-3">
+                                <!-- Feed items added by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+       <!-- ========== ROI CALCULATOR ========== -->
+    <section id="roi" class="py-24 bg-[#0f0f0f]">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-gradient-to-br from-[#141414] to-[#0a0a0a] border border-white/10 rounded-3xl p-8 md:p-12 fade-up">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl md:text-4xl font-bold">💡 Calculate Your Savings</h2>
+                    <p class="text-gray-400 mt-2">See how much you save with solar in just seconds.</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <div class="input-group">
+                            <input type="number" id="roi-area" placeholder=" " value="500" class="w-full" oninput="updateROI()" />
+                            <label>Roof Area (sq ft)</label>
+                        </div>
+                        <div class="input-group">
+                            <input type="number" id="roi-bill" placeholder=" " value="120" class="w-full" oninput="updateROI()" />
+                            <label>Monthly Bill (₹)</label>
+                        </div>
+                    </div>
+                    <div class="space-y-4 flex flex-col justify-center bg-white/5 rounded-2xl p-6 border border-white/5">
+                        <div>
+                            <span class="text-gray-400 text-sm">Yearly Savings</span>
+                            <div class="text-3xl font-bold text-[#FE9A00]">₹<span id="roi-savings">0</span></div>
+                        </div>
+                        <div>
+                            <span class="text-gray-400 text-sm">CO₂ Offset (tons/year)</span>
+                            <div class="text-3xl font-bold text-green-400"><span id="roi-co2">0</span> t</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <button onclick="document.getElementById('roi-area').value=1000;document.getElementById('roi-bill').value=250;updateROI();" class="text-sm text-[#FE9A00] hover:underline">Try a large system →</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+        <!-- ========== SMART ROI ANALYTICS ========== -->
+    <section id="analytics" class="py-24 bg-[#0A0A0A]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="text-[#FE9A00] font-semibold tracking-widest text-sm">PREDICTIVE ANALYTICS</span>
+                <h2 class="text-4xl md:text-5xl font-bold mt-2">5-Year Solar Savings Projection</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto mt-4">AI-powered predictions based on your location and energy needs.</p>
+            </div>
+
+            <div class="bg-gradient-to-br from-[#141414] to-[#0a0a0a] border border-white/10 rounded-3xl p-8 md:p-12 fade-up">
+                <div class="space-y-6">
+                    <div class="flex gap-4 flex-wrap">
+                        <button class="size-btn px-6 py-2 bg-[#FE9A00]/20 text-[#FE9A00] rounded-full hover:bg-[#FE9A00]/30 transition" data-size="5">5 kW</button>
+                        <button class="size-btn px-6 py-2 border border-white/20 rounded-full hover:bg-white/5 transition" data-size="10">10 kW</button>
+                        <button class="size-btn px-6 py-2 border border-white/20 rounded-full hover:bg-white/5 transition" data-size="15">15 kW</button>
+                        <button class="size-btn px-6 py-2 border border-white/20 rounded-full hover:bg-white/5 transition" data-size="20">20 kW</button>
+                    </div>
+                    <div id="projection-chart" class="h-64 w-full flex items-end gap-4" style="padding: 20px 0;"></div>
+                    <div class="grid grid-cols-4 gap-4 text-center">
+                        <div><span class="text-gray-400 text-sm">Total Savings</span><div class="text-2xl font-bold text-[#FE9A00]">₹<span id="total-savings">0</span></div></div>
+                        <div><span class="text-gray-400 text-sm">ROI</span><div class="text-2xl font-bold text-green-400"><span id="roi-percent">0</span>%</div></div>
+                        <div><span class="text-gray-400 text-sm">Payback Period</span><div class="text-2xl font-bold text-blue-400"><span id="payback">0</span> years</div></div>
+                        <div><span class="text-gray-400 text-sm">CO₂ Offset</span><div class="text-2xl font-bold text-emerald-400"><span id="total-co2">0</span> tons</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== REFERRAL LEADERBOARD ========== -->
+    <section id="referral" class="py-24 bg-[#0f0f0f]">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="text-[#FE9A00] font-semibold tracking-widest text-sm">GAMIFICATION</span>
+                <h2 class="text-4xl md:text-5xl font-bold mt-2">Referral Leaderboard</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto mt-4">Invite friends and climb the rankings to unlock exclusive rewards.</p>
+            </div>
+
+            <div class="bg-gradient-to-br from-[#141414] to-[#0a0a0a] border border-white/10 rounded-3xl p-8 md:p-12 fade-up">
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-gray-400 text-sm">Your Referrals</span>
+                            <div class="text-3xl font-bold text-[#FE9A00]"><span id="user-referrals">7</span></div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-gray-400 text-sm">Your Rank</span>
+                            <div class="text-3xl font-bold text-yellow-400">#<span id="user-rank">42</span></div>
+                        </div>
+                    </div>
+                    <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-gradient-to-r from-[#FE9A00] to-yellow-400 transition-all duration-1000" style="width: 35%;"></div>
+                    </div>
+                    <div class="text-sm text-gray-400 text-center">Next milestone: <span id="next-milestone">10</span> referrals</div>
+                    <div id="leaderboard" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+           <!-- ========== SOLAR QUIZ ========== -->
+    <section id="quiz" class="py-24 bg-[#0A0A0A]">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 fade-up">
+                <span class="text-[#FE9A00] font-semibold tracking-widest text-sm">EDUCATION</span>
+                <h2 class="text-4xl md:text-5xl font-bold mt-2">Solar Knowledge Quiz</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto mt-4">Answer 5 questions to get your personalized solar readiness score.</p>
+            </div>
+
+            <div class="bg-gradient-to-br from-[#141414] to-[#0a0a0a] border border-white/10 rounded-3xl p-8 md:p-12 fade-up">
+                <!-- Progress Bar -->
+                <div class="mb-6">
+                    <div class="flex justify-between text-sm text-gray-400 mb-2">
+                        <span>Question <span id="question-number">1</span>/5</span>
+                        <span>Score: <span id="current-score">0</span>/20</span>
+                    </div>
+                    <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div id="quiz-progress-bar" class="h-full bg-gradient-to-r from-[#FE9A00] to-yellow-400 transition-all duration-500" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div id="quiz-container">
+                    <div class="text-center mb-6">
+                        <h3 id="question-text" class="text-2xl font-bold mt-2">What is your average monthly electricity bill?</h3>
+                    </div>
+                    <div id="quiz-options" class="grid grid-cols-2 gap-4"></div>
+                </div>
+
+                <div id="quiz-result" class="hidden text-center">
+                    <div class="text-6xl mb-4" id="result-emoji">🏆</div>
+                    <h3 id="result-title" class="text-3xl font-bold">Great Job!</h3>
+                    <p id="result-desc" class="text-gray-400 mt-4">Based on your answers, you're ready for solar!</p>
+                    <div class="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
+                        <div class="text-sm text-gray-400">Your Score</div>
+                        <div class="text-4xl font-bold text-[#FE9A00]"><span id="final-score">0</span>/20</div>
+                    </div>
+                    <div id="result-recommendation" class="mt-4 p-4 bg-[#FE9A00]/10 border border-[#FE9A00]/20 rounded-xl">
+                        <p id="result-message" class="text-sm text-gray-300"></p>
+                    </div>
+                    <div class="flex gap-4 justify-center mt-6">
+                        <button id="retry-quiz" class="px-6 py-2 border border-white/20 rounded-full hover:bg-white/5 transition">🔄 Retry Quiz</button>
+                        <a href="#waitlist" class="px-6 py-2 bg-[#FE9A00] text-black rounded-full hover:scale-105 transition">🚀 Join Waitlist</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== WAITLIST ========== -->
+    <section id="waitlist" class="py-24 bg-[#0f0f0f]">
+        <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-[#141414] border border-white/10 rounded-3xl p-8 fade-up">
+                <div class="text-center mb-6">
+                    <span class="bg-[#FE9A00]/10 text-[#FE9A00] px-3 py-1 rounded-full text-sm font-medium">🚀 Early Access</span>
+                    <h2 class="text-3xl font-bold mt-3">Join the Waitlist</h2>
+                    <p class="text-gray-400 text-sm mt-1">Be among the first to shape the solar future.</p>
+                </div>
+                <form id="waitlist-form" class="space-y-4">
+                    <div class="input-group">
+                        <input type="text" id="wl-name" placeholder=" " required />
+                        <label>Full Name</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="email" id="wl-email" placeholder=" " required />
+                        <label>Email</label>
+                    </div>
+                    <div class="input-group">
+                        <select id="wl-role" required class="appearance-none">
+                            <option value="" disabled selected hidden>Select Role</option>
+                            <option value="Client">Client (Homeowner/Business)</option>
+                            <option value="EPC">EPC Company</option>
+                            <option value="Installer">Installer / Technician</option>
+                        </select>
+                        <label>I am a...</label>
+                    </div>
+                    <button type="submit" id="wl-submit" class="w-full py-3.5 bg-[#FE9A00] text-black font-bold rounded-full hover:scale-[1.02] transition-transform">
+                        Secure My Spot
+                    </button>
+                </form>
+                <div id="wl-success" class="hidden text-center mt-6 space-y-3">
+                    <div class="text-5xl">🎉</div>
+                    <h3 class="text-xl font-bold">You're on the list!</h3>
+                    <p class="text-gray-400 text-sm">Your queue position: <span id="wl-queue" class="text-[#FE9A00] font-bold text-xl">#0</span></p>
+                    <button id="share-btn" class="mt-2 px-6 py-2 border border-white/20 rounded-full hover:bg-white/5 transition text-sm">
+                        🔗 Invite Friends (Skip 5 spots)
+                    </button>
+                    <div id="share-feedback" class="text-green-400 text-sm"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="border-t border-white/5 py-12 bg-[#0A0A0A]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
+            <div class="flex items-center gap-4">
+                <span class="font-bold text-white">Lumenor</span>
+                <span>© 2026</span>
+            </div>
+            <div class="flex gap-6">
+                <a href="#" class="hover:text-[#FE9A00] transition">Twitter</a>
+                <a href="#" class="hover:text-[#FE9A00] transition">LinkedIn</a>
+                <a href="#" class="hover:text-[#FE9A00] transition">Instagram</a>
+            </div>
+            <div>
+                <button id="lang-toggle" class="px-3 py-1 border border-white/10 rounded-full hover:border-[#FE9A00] transition text-xs">🌐 English</button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ========== TOAST CONTAINER ========== -->
+    <div id="toast-container"></div>
+
+    <!-- ============================================================ -->
+    <!-- ========== JAVASCRIPT ========================================= -->
+    <!-- ============================================================ -->
+    <script>
+        // --------------------------------------------------------------
+        // 1. THREE.JS 3D SOLAR PANEL
+        // --------------------------------------------------------------
+        (function initThree() {
+            const container = document.getElementById('three-container');
+            if (!container) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0A0A0A);
+
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(3, 2, 6);
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0x404060);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(5, 10, 7);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const fillLight = new THREE.DirectionalLight(0xFE9A00, 0.4);
+            fillLight.position.set(-3, 1, 4);
+            scene.add(fillLight);
+
+            const panel = new THREE.Group();
+
+            const baseGeo = new THREE.BoxGeometry(3.2, 0.1, 2.2);
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.6, metalness: 0.2 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = -0.1;
+            base.receiveShadow = true;
+            panel.add(base);
+
+            const cellMat = new THREE.MeshStandardMaterial({
+                color: 0x1a3a5c,
+                roughness: 0.4,
+                metalness: 0.8,
+                emissive: 0x0a1a2a,
+                emissiveIntensity: 0.2
+            });
+            const cellMatBright = new THREE.MeshStandardMaterial({
+                color: 0x2a6a9c,
+                roughness: 0.3,
+                metalness: 0.9,
+                emissive: 0xFE9A00,
+                emissiveIntensity: 0.05
+            });
+
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 6; col++) {
+                    const cell = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.02, 0.28), row % 2 === 0 ? cellMat : cellMatBright);
+                    const x = -1.3 + col * 0.52;
+                    const z = -0.8 + row * 0.7;
+                    cell.position.set(x, 0.06, z);
+                    cell.castShadow = true;
+                    panel.add(cell);
+                }
+            }
+
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x444444 });
+            for (let row = 0; row <= 3; row++) {
+                const geo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(-1.5, 0.08, -0.9 + row * 0.7),
+                    new THREE.Vector3(1.5, 0.08, -0.9 + row * 0.7)
+                ]);
+                const line = new THREE.Line(geo, lineMat);
+                panel.add(line);
+            }
+            for (let col = 0; col <= 6; col++) {
+                const geo = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(-1.3 + col * 0.52, 0.08, -1.0),
+                    new THREE.Vector3(-1.3 + col * 0.52, 0.08, 1.0)
+                ]);
+                const line = new THREE.Line(geo, lineMat);
+                panel.add(line);
+            }
+
+            const edgeGeo = new THREE.EdgesGeometry(baseGeo);
+            const edgeMat = new THREE.LineBasicMaterial({ color: 0xFE9A00, transparent: true, opacity: 0.15 });
+            const edge = new THREE.LineSegments(edgeGeo, edgeMat);
+            edge.position.copy(base.position);
+            panel.add(edge);
+
+            panel.position.y = 0.2;
+            scene.add(panel);
+
+            function resize() {
+                const w = container.clientWidth;
+                const h = container.clientHeight;
+                renderer.setSize(w, h);
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            }
+            window.addEventListener('resize', resize);
+
+            document.addEventListener('mousemove', (e) => {
+                const x = (e.clientX / window.innerWidth - 0.5) * 0.3;
+                const y = (e.clientY / window.innerHeight - 0.5) * -0.15;
+                window._panelTargetY = x * 0.5;
+                window._panelTargetX = y * 0.2;
+            });
+
+            let oldRAF = null;
+
+            function startNewLoop() {
+                if (oldRAF) cancelAnimationFrame(oldRAF);
+                (function loop() {
+                    oldRAF = requestAnimationFrame(loop);
+                    const targetY = window._panelTargetY || 0;
+                    const targetX = window._panelTargetX || 0;
+                    panel.rotation.y += (targetY - panel.rotation.y) * 0.03;
+                    panel.rotation.x += (targetX - panel.rotation.x) * 0.03;
+                    panel.rotation.z += (0 - panel.rotation.z) * 0.03;
+                    renderer.render(scene, camera);
+                })();
+            }
+            startNewLoop();
+        })();
+
+        // --------------------------------------------------------------
+        // 2. COUNTERS (Live fluctuation)
+        // --------------------------------------------------------------
+        function animateCounter(element, target, duration = 1500) {
+            const start = parseInt(element.textContent.replace(/,/g, '')) || 0;
+            const diff = target - start;
+            const startTime = performance.now();
+
+            function update(now) {
+                const progress = Math.min((now - startTime) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(start + diff * eased);
+                element.textContent = current;
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        function initMetrics() {
+            const elProjects = document.getElementById('metric-projects');
+            const elEpcs = document.getElementById('metric-epcs');
+            const elInstallers = document.getElementById('metric-installers');
+
+            const targets = {
+                projects: parseInt(elProjects.dataset.target) || 1247,
+                epcs: parseInt(elEpcs.dataset.target) || 312,
+                installers: parseInt(elInstallers.dataset.target) || 849
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        animateCounter(elProjects, targets.projects);
+                        animateCounter(elEpcs, targets.epcs);
+                        animateCounter(elInstallers, targets.installers);
+                        observer.disconnect();
+                    }
+                });
+            }, { threshold: 0.5 });
+            observer.observe(elProjects);
+
+            setInterval(() => {
+                const currentP = parseInt(elProjects.textContent) || targets.projects;
+                const currentE = parseInt(elEpcs.textContent) || targets.epcs;
+                const currentI = parseInt(elInstallers.textContent) || targets.installers;
+
+                const deltaP = Math.floor(Math.random() * 6) - 2;
+                const deltaE = Math.floor(Math.random() * 4) - 1;
+                const deltaI = Math.floor(Math.random() * 5) - 2;
+
+                elProjects.textContent = Math.max(100, currentP + deltaP);
+                elEpcs.textContent = Math.max(50, currentE + deltaE);
+                elInstallers.textContent = Math.max(200, currentI + deltaI);
+            }, 4000);
+        }
+        initMetrics();
+
+        // --------------------------------------------------------------
+        // 3. ROI CALCULATOR
+        // --------------------------------------------------------------
+                // --------------------------------------------------------------
+        // 3. ROI CALCULATOR - COMPLETE FIXED VERSION
+        // --------------------------------------------------------------
+        function updateROI() {
+            console.log("updateROI called"); // Debug log
+            
+            // Get values from inputs
+            const areaInput = document.getElementById('roi-area');
+            const billInput = document.getElementById('roi-bill');
+            
+            const area = parseFloat(areaInput ? areaInput.value : 0) || 0;
+            const bill = parseFloat(billInput ? billInput.value : 0) || 0;
+            
+            console.log("Area:", area, "Bill:", bill); // Debug log
+
+            // Convert to Rupees (1 USD = 85 INR)
+            const yearlySavingsINR = bill * 12 * 0.85 * 85;
+            const co2 = area * 0.35;
+
+            // Update the display
+            const savingsElement = document.getElementById('roi-savings');
+            const co2Element = document.getElementById('roi-co2');
+            
+            if (savingsElement) {
+                savingsElement.textContent = Math.round(yearlySavingsINR).toLocaleString('en-IN');
+                console.log("Savings updated to:", savingsElement.textContent);
+            } else {
+                console.log("Savings element not found!");
+            }
+            
+            if (co2Element) {
+                co2Element.textContent = co2.toFixed(1);
+                console.log("CO2 updated to:", co2Element.textContent);
+            } else {
+                console.log("CO2 element not found!");
+            }
+        }
+
+        // Set up event listeners when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM loaded - setting up ROI calculator");
+            
+            const areaInput = document.getElementById('roi-area');
+            const billInput = document.getElementById('roi-bill');
+            
+            if (areaInput) {
+                areaInput.addEventListener('input', updateROI);
+                console.log("Area input listener added");
+            } else {
+                console.log("Area input not found!");
+            }
+            
+            if (billInput) {
+                billInput.addEventListener('input', updateROI);
+                console.log("Bill input listener added");
+            } else {
+                console.log("Bill input not found!");
+            }
+            
+            // Initial calculation
+            setTimeout(updateROI, 200);
+        });
+
+        // --------------------------------------------------------------
+        // 4. 3D TILT CARDS
+        // --------------------------------------------------------------
+        document.querySelectorAll('.tilt-card').forEach(card => {
+            const inner = card.querySelector('.tilt-card-inner');
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateY = ((x - centerX) / centerX) * 6;
+                const rotateX = ((centerY - y) / centerY) * 6;
+                inner.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                inner.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+            });
+        });
+
+        // --------------------------------------------------------------
+        // 5. SCROLL FADE-UP
+        // --------------------------------------------------------------
+        const fadeElements = document.querySelectorAll('.fade-up');
+        const fadeObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const delay = parseInt(entry.target.dataset.delay) || 0;
+                    setTimeout(() => {
+                        entry.target.classList.add('visible');
+                    }, delay);
+                    fadeObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+        fadeElements.forEach(el => fadeObserver.observe(el));
+
+        // --------------------------------------------------------------
+        // 6. WAITLIST FORM
+        // --------------------------------------------------------------
+        const form = document.getElementById('waitlist-form');
+        const successDiv = document.getElementById('wl-success');
+        const queueSpan = document.getElementById('wl-queue');
+        const shareBtn = document.getElementById('share-btn');
+        const shareFeedback = document.getElementById('share-feedback');
+
+        let queueNumber = parseInt(localStorage.getItem('lumenor_queue')) || 142;
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('wl-name').value.trim();
+            const email = document.getElementById('wl-email').value.trim();
+            const role = document.getElementById('wl-role').value;
+
+            if (!name || !email || !role) {
+                alert('Please fill in all fields.');
+                return;
+            }
+            if (!email.includes('@')) {
+                alert('Please enter a valid email.');
+                return;
+            }
+
+            queueNumber += 1;
+            localStorage.setItem('lumenor_queue', queueNumber);
+            localStorage.setItem('lumenor_user', JSON.stringify({ name, email, role }));
+
+            document.querySelector('#waitlist-form').classList.add('hidden');
+            successDiv.classList.remove('hidden');
+            queueSpan.textContent = `#${queueNumber}`;
+
+            showToast(`${name} just joined as a ${role}!`, '🎉');
+        });
+
+        shareBtn.addEventListener('click', () => {
+            const link = window.location.href;
+            navigator.clipboard.writeText(link).then(() => {
+                shareFeedback.textContent = '✅ Link copied! Invite friends to skip 5 spots.';
+                setTimeout(() => {
+                    queueNumber = Math.max(1, queueNumber - 5);
+                    localStorage.setItem('lumenor_queue', queueNumber);
+                    queueSpan.textContent = `#${queueNumber}`;
+                    shareFeedback.textContent = '🚀 You skipped 5 spots! New position: #' + queueNumber;
+                }, 800);
+            }).catch(() => {
+                alert('Copy this link: ' + window.location.href);
+            });
+        });
+
+        // --------------------------------------------------------------
+        // 7. TOAST NOTIFICATIONS
+        // --------------------------------------------------------------
+        const names = ['Aarav', 'Priya', 'Rahul', 'Neha', 'Vikram', 'Sneha', 'Arjun', 'Meera', 'Kiran', 'Ananya'];
+        const cities = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur'];
+        const roles = ['Client', 'EPC', 'Installer'];
+
+        function showToast(message, emoji = '✨') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `<span>${emoji} ${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 400);
+            }, 4000);
+        }
+
+        setTimeout(() => {
+            const n = names[Math.floor(Math.random() * names.length)];
+            const c = cities[Math.floor(Math.random() * cities.length)];
+            const r = roles[Math.floor(Math.random() * roles.length)];
+            showToast(`${n} from ${c} joined as ${r}`, '☀️');
+        }, 3000);
+
+        setInterval(() => {
+            const n = names[Math.floor(Math.random() * names.length)];
+            const c = cities[Math.floor(Math.random() * cities.length)];
+            const r = roles[Math.floor(Math.random() * roles.length)];
+            showToast(`${n} from ${c} signed up as ${r}`, '⚡');
+        }, 7000);
+
+        // --------------------------------------------------------------
+        // 8. MOBILE NAV TOGGLE
+        // --------------------------------------------------------------
+        document.getElementById('nav-toggle').addEventListener('click', () => {
+            document.getElementById('mobile-nav').classList.toggle('open');
+        });
+
+        document.querySelectorAll('#mobile-nav a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.getElementById('mobile-nav').classList.remove('open');
+            });
+        });
+
+        // --------------------------------------------------------------
+        // 9. PRODUCT DEMO
+        // --------------------------------------------------------------
+        window.startDemo = function(productName) {
+            alert(
+                `🚀 ${productName} Demo\n\nStep 1: Input your project details.\nStep 2: AI matches you with the best partners.\nStep 3: Track progress in real-time.\n\n(Full interactive walkthrough coming soon!)`);
+        };
+
+        // --------------------------------------------------------------
+        // 10. LANGUAGE TOGGLE
+        // --------------------------------------------------------------
+        let lang = 'en';
+        document.getElementById('lang-toggle').addEventListener('click', function() {
+            lang = lang === 'en' ? 'hi' : 'en';
+            this.textContent = lang === 'en' ? '🌐 English' : '🌐 हिंदी';
+            const heroTitle = document.querySelector('h1');
+            if (lang === 'hi') {
+                heroTitle.innerHTML = 'अपना भविष्य <br /><span class="text-[#FE9A00]">सौर ऊर्जा से</span> बनाएं।';
+                document.querySelector('#ecosystem h2').textContent = 'तीन उत्पाद। एक मिशन।';
+            } else {
+                heroTitle.innerHTML = 'Power Your Future <br /><span class="text-[#FE9A00]">with Solar.</span>';
+                document.querySelector('#ecosystem h2').textContent = 'Three Products. One Mission.';
+            }
+        });
+
+                // ==============================================================
+        // 11. SOLAR ENERGY SIMULATOR - ENHANCED INTERACTIVE VERSION
+        // ==============================================================
+        (function initSimulator() {
+            let time = 6; // 6 AM
+            let speed = 1;
+            let isPlaying = true;
+            let season = 'summer'; // summer, winter, monsoon
+            const maxEnergy = 10;
+            let energyHistory = [];
+            
+            // DOM Elements
+            const sunElement = document.getElementById('sun-draggable');
+            const timeDisplay = document.getElementById('sim-time');
+            const energyMeter = document.getElementById('energy-meter');
+            const meterPercent = document.getElementById('meter-percent');
+            const currentEnergyEl = document.getElementById('current-energy');
+            const todaySavingsEl = document.getElementById('today-savings');
+            const todayCo2El = document.getElementById('today-co2');
+            const sunAngleEl = document.getElementById('sun-angle');
+            const graphContainer = document.getElementById('energy-graph');
+            const statusMessage = document.getElementById('status-message');
+            const panels = document.querySelectorAll('.panel');
+            const skyBg = document.getElementById('sky-bg');
+            
+            // Season configurations
+            const seasonConfigs = {
+                summer: { 
+                    label: '☀️ Summer', 
+                    peak: 1.0, 
+                    hours: '6 AM - 7 PM',
+                    color: 'from-orange-500/20 to-blue-900/20',
+                    message: '☀️ Peak production! Perfect solar conditions.'
+                },
+                winter: { 
+                    label: '❄️ Winter', 
+                    peak: 0.6, 
+                    hours: '7 AM - 5 PM',
+                    color: 'from-blue-400/20 to-purple-900/20',
+                    message: '❄️ Lower production due to shorter days.'
+                },
+                monsoon: { 
+                    label: '🌧️ Monsoon', 
+                    peak: 0.4, 
+                    hours: '8 AM - 4 PM',
+                    color: 'from-gray-500/20 to-blue-900/30',
+                    message: '🌧️ Cloudy conditions reduce production.'
+                }
+            };
+
+            // Draggable Sun
+            let isDragging = false;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            sunElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                const rect = sunElement.getBoundingClientRect();
+                const container = sunElement.parentElement.getBoundingClientRect();
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+                sunElement.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const container = sunElement.parentElement.getBoundingClientRect();
+                let x = e.clientX - container.left - dragOffsetX;
+                let y = e.clientY - container.top - dragOffsetY;
+                
+                // Constrain to container
+                x = Math.max(0, Math.min(container.width - 48, x));
+                y = Math.max(0, Math.min(container.height - 48, y));
+                
+                sunElement.style.left = (x / container.width * 100) + '%';
+                sunElement.style.top = (y / container.height * 100) + '%';
+                
+                // Update time based on sun position
+                const percentX = x / container.width;
+                time = 6 + percentX * 14; // 6 AM to 8 PM
+                updateSimulator();
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    sunElement.style.cursor = 'grab';
+                }
+            });
+
+            // Touch support for mobile
+            sunElement.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                const touch = e.touches[0];
+                const rect = sunElement.getBoundingClientRect();
+                dragOffsetX = touch.clientX - rect.left;
+                dragOffsetY = touch.clientY - rect.top;
+                e.preventDefault();
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                const container = sunElement.parentElement.getBoundingClientRect();
+                let x = touch.clientX - container.left - dragOffsetX;
+                let y = touch.clientY - container.top - dragOffsetY;
+                
+                x = Math.max(0, Math.min(container.width - 48, x));
+                y = Math.max(0, Math.min(container.height - 48, y));
+                
+                sunElement.style.left = (x / container.width * 100) + '%';
+                sunElement.style.top = (y / container.height * 100) + '%';
+                
+                const percentX = x / container.width;
+                time = 6 + percentX * 14;
+                updateSimulator();
+            });
+
+            document.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            // Play/Pause
+            document.getElementById('play-sim').addEventListener('click', function() {
+                isPlaying = !isPlaying;
+                this.textContent = isPlaying ? '⏸️ Pause' : '▶️ Play';
+            });
+
+            // Speed buttons
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.speed-btn').forEach(b => {
+                        b.className = b.className.replace(' bg-[#FE9A00]/20 text-[#FE9A00]', ' border border-white/20');
+                    });
+                    this.className += ' bg-[#FE9A00]/20 text-[#FE9A00]';
+                    speed = parseInt(this.dataset.speed);
+                });
+            });
+
+            // Season buttons
+            document.querySelectorAll('.season-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.season-btn').forEach(b => {
+                        b.className = b.className.replace(' bg-[#FE9A00]/20 text-[#FE9A00]', ' border border-white/20');
+                    });
+                    this.className += ' bg-[#FE9A00]/20 text-[#FE9A00]';
+                    season = this.dataset.season;
+                    updateSimulator();
+                });
+            });
+
+            // Reset
+            document.getElementById('reset-sim').addEventListener('click', function() {
+                time = 6;
+                speed = 1;
+                isPlaying = true;
+                document.getElementById('play-sim').textContent = '⏸️ Pause';
+                document.querySelectorAll('.speed-btn').forEach(b => {
+                    b.className = b.className.replace(' bg-[#FE9A00]/20 text-[#FE9A00]', ' border border-white/20');
+                });
+                document.querySelector('.speed-btn[data-speed="1"]').className += ' bg-[#FE9A00]/20 text-[#FE9A00]';
+                updateSimulator();
+            });
+
+            function updateSimulator() {
+                const seasonConfig = seasonConfigs[season];
+                const hour = time % 24;
+                
+                // Calculate energy based on sun position and season
+                const sunAngle = ((hour - 6) / 14) * 180;
+                const normalizedAngle = Math.max(0, Math.sin((hour - 6) / 14 * Math.PI));
+                const seasonalAdjustment = seasonConfig.peak;
+                const weatherFactor = season === 'monsoon' ? (0.6 + Math.random() * 0.3) : 1;
+                const energy = Math.max(0, normalizedAngle * maxEnergy * seasonalAdjustment * weatherFactor);
+                const normalizedEnergy = Math.min(energy / maxEnergy, 1);
+
+                // Update sun position (if not dragging)
+                if (!isDragging) {
+                    const percentX = ((hour - 6) / 14) * 100;
+                    const sunY = 85 - (Math.sin((hour - 6) / 14 * Math.PI) * 70);
+                    sunElement.style.left = Math.max(5, Math.min(90, percentX)) + '%';
+                    sunElement.style.top = Math.max(5, Math.min(85, sunY)) + '%';
+                }
+
+                // Update time display
+                const hours = Math.floor(hour);
+                const minutes = Math.floor((hour - hours) * 60);
+                timeDisplay.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+                // Update energy meter
+                const meterWidth = Math.min(100, normalizedEnergy * 100);
+                energyMeter.style.width = meterWidth + '%';
+                meterPercent.textContent = Math.round(meterWidth) + '%';
+
+                // Update stats
+                currentEnergyEl.textContent = Math.round(energy * 10) / 10;
+                const savings = energy * 0.5 * 85;
+                todaySavingsEl.textContent = Math.round(savings * 100) / 100;
+                todayCo2El.textContent = Math.round(energy * 2);
+                sunAngleEl.textContent = Math.round(sunAngle);
+
+                // Update sky color
+                const skyColor = `hsl(${220 - normalizedEnergy * 60}, ${70 - normalizedEnergy * 30}%, ${15 + normalizedEnergy * 30}%)`;
+                skyBg.style.background = `radial-gradient(circle at 50% 50%, ${skyColor}, #0a0a0a 80%)`;
+
+                // Update panel angles
+                const panelAngle = (normalizedEnergy * 30) - 15;
+                panels.forEach((panel, i) => {
+                    const offset = (i - 2) * 3;
+                    panel.style.transform = `rotate(${panelAngle + offset}deg)`;
+                    panel.style.opacity = 0.4 + normalizedEnergy * 0.6;
+                });
+
+                // Update status message
+                let statusText = seasonConfig.message;
+                if (normalizedEnergy > 0.7) {
+                    statusText = '☀️ ' + seasonConfig.message;
+                } else if (normalizedEnergy > 0.3) {
+                    statusText = '⛅ Moderate production';
+                } else if (normalizedEnergy > 0) {
+                    statusText = '🌥️ Low production';
+                } else {
+                    statusText = '🌙 Nighttime - No production';
+                }
+                if (normalizedEnergy > 0.7 && hour >= 10 && hour <= 15) {
+                    statusText = '🚀 ' + statusText;
+                }
+                statusMessage.textContent = statusText;
+
+                // Update energy graph
+                energyHistory.push(Math.round(energy * 10) / 10);
+                if (energyHistory.length > 24) energyHistory.shift();
+                
+                graphContainer.innerHTML = '';
+                energyHistory.forEach((val, index) => {
+                    const bar = document.createElement('div');
+                    const height = (val / maxEnergy) * 100;
+                    bar.className = 'flex-1 rounded-t-sm transition-all duration-500';
+                    bar.style.height = Math.max(5, height) + '%';
+                    bar.style.background = `linear-gradient(to top, #FE9A00, ${height > 50 ? '#fbbf24' : '#fcd34d'})`;
+                    bar.style.opacity = 0.4 + (val / maxEnergy) * 0.6;
+                    graphContainer.appendChild(bar);
+                });
+            }
+
+            // Animation loop
+            function animateSimulator() {
+                if (isPlaying && !isDragging) {
+                    time += 0.02 * speed;
+                    if (time > 20) time = 6;
+                    updateSimulator();
+                }
+                requestAnimationFrame(animateSimulator);
+            }
+
+            // Initial setup
+            updateSimulator();
+            animateSimulator();
+        })();
+
+               // ==============================================================
+        // 12. LIVE PROJECT MAP - ENHANCED INTERACTIVE VERSION
+        // ==============================================================
+        (function initMap() {
+            const cities = [
+                { 
+                    name: 'Mumbai', 
+                    x: 35, y: 45, 
+                    projects: 45, 
+                    newProjects: 3,
+                    status: 'high',
+                    color: '#FE9A00',
+                    description: 'Financial capital leading the solar revolution'
+                },
+                { 
+                    name: 'Delhi', 
+                    x: 40, y: 25, 
+                    projects: 38, 
+                    newProjects: 5,
+                    status: 'high',
+                    color: '#FE9A00',
+                    description: 'Government initiatives driving solar adoption'
+                },
+                { 
+                    name: 'Bangalore', 
+                    x: 45, y: 70, 
+                    projects: 52, 
+                    newProjects: 7,
+                    status: 'high',
+                    color: '#fbbf24',
+                    description: 'Tech hub embracing sustainable energy'
+                },
+                { 
+                    name: 'Chennai', 
+                    x: 55, y: 75, 
+                    projects: 29, 
+                    newProjects: 2,
+                    status: 'active',
+                    color: '#FE9A00',
+                    description: 'Coastal city with high solar potential'
+                },
+                { 
+                    name: 'Hyderabad', 
+                    x: 50, y: 55, 
+                    projects: 34, 
+                    newProjects: 4,
+                    status: 'high',
+                    color: '#fbbf24',
+                    description: 'Rapidly growing solar market'
+                },
+                { 
+                    name: 'Pune', 
+                    x: 38, y: 48, 
+                    projects: 22, 
+                    newProjects: 1,
+                    status: 'active',
+                    color: '#FE9A00',
+                    description: 'Educational hub going green'
+                },
+                { 
+                    name: 'Ahmedabad', 
+                    x: 32, y: 35, 
+                    projects: 18, 
+                    newProjects: 2,
+                    status: 'active',
+                    color: '#FE9A00',
+                    description: 'Gujarat\'s solar success story'
+                },
+                { 
+                    name: 'Jaipur', 
+                    x: 38, y: 30, 
+                    projects: 15, 
+                    newProjects: 1,
+                    status: 'active',
+                    color: '#FE9A00',
+                    description: 'Rajasthan\'s abundant solar resources'
+                },
+                { 
+                    name: 'Kolkata', 
+                    x: 60, y: 40, 
+                    projects: 12, 
+                    newProjects: 0,
+                    status: 'active',
+                    color: '#FE9A00',
+                    description: 'Eastern hub embracing solar'
+                },
+                { 
+                    name: 'Lucknow', 
+                    x: 45, y: 35, 
+                    projects: 8, 
+                    newProjects: 2,
+                    status: 'new',
+                    color: '#22c55e',
+                    description: 'Emerging solar market in UP'
+                }
+            ];
+
+            const dotContainer = document.getElementById('project-dots');
+            const labelsContainer = document.getElementById('city-labels');
+            const feedContainer = document.getElementById('activity-feed');
+            const connectionLines = document.getElementById('connection-lines');
+            const liveProjectsEl = document.getElementById('live-projects');
+            const activeCitiesEl = document.getElementById('active-cities');
+
+            if (!dotContainer) return;
+
+            // Store city elements for interaction
+            const cityElements = [];
+            let totalProjects = 0;
+
+            // Create city dots with hover effects
+            cities.forEach((city, index) => {
+                totalProjects += city.projects;
+                
+                // Dot container
+                const dotWrapper = document.createElement('div');
+                dotWrapper.className = 'absolute cursor-pointer group';
+                dotWrapper.style.left = city.x + '%';
+                dotWrapper.style.top = city.y + '%';
+                dotWrapper.style.transform = 'translate(-50%, -50%)';
+                dotWrapper.dataset.city = city.name;
+
+                // Main dot with pulse
+                const dot = document.createElement('div');
+                dot.className = `w-4 h-4 rounded-full transition-all duration-300 group-hover:scale-150`;
+                dot.style.background = city.color;
+                dot.style.boxShadow = `0 0 20px ${city.color}40`;
+                
+                // Pulse ring
+                const ring = document.createElement('div');
+                ring.className = `absolute inset-0 rounded-full animate-ping opacity-75`;
+                ring.style.background = city.color;
+                ring.style.animationDuration = (2 + Math.random() * 2) + 's';
+                
+                // Glow effect
+                const glow = document.createElement('div');
+                glow.className = `absolute inset-[-8px] rounded-full opacity-30`;
+                glow.style.background = `radial-gradient(circle, ${city.color}80, transparent)`;
+                
+                dotWrapper.appendChild(glow);
+                dotWrapper.appendChild(ring);
+                dotWrapper.appendChild(dot);
+
+                // Tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none';
+                tooltip.style.zIndex = '50';
+                tooltip.innerHTML = `
+                    <div class="bg-[#141414] border border-white/10 rounded-xl p-3 min-w-[200px] shadow-2xl">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-bold text-white">${city.name}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full ${city.status === 'high' ? 'bg-yellow-400/20 text-yellow-400' : city.status === 'new' ? 'bg-green-400/20 text-green-400' : 'bg-blue-400/20 text-blue-400'}">${city.status === 'high' ? '🔥 High' : city.status === 'new' ? '✨ New' : '● Active'}</span>
+                        </div>
+                        <div class="text-sm text-gray-400">${city.projects} active projects</div>
+                        <div class="text-xs text-gray-500 mt-1">${city.newProjects} new this week</div>
+                        <div class="text-xs text-gray-500 mt-1">${city.description}</div>
+                    </div>
+                `;
+                dotWrapper.appendChild(tooltip);
+
+                dotContainer.appendChild(dotWrapper);
+                cityElements.push({ element: dotWrapper, city, index });
+
+                // City label
+                const label = document.createElement('div');
+                label.className = 'absolute text-[8px] md:text-[10px] font-medium text-gray-500 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity';
+                label.style.left = city.x + '%';
+                label.style.top = (city.y + 4) + '%';
+                label.style.transform = 'translate(-50%, 0)';
+                label.style.textShadow = '0 0 10px rgba(0,0,0,0.8)';
+                label.textContent = city.name;
+                labelsContainer.appendChild(label);
+
+                // Click handler - show city details
+                dotWrapper.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    showCityDetails(city);
+                });
+            });
+
+            // Update total projects
+            if (liveProjectsEl) liveProjectsEl.textContent = totalProjects;
+            if (activeCitiesEl) activeCitiesEl.textContent = cities.length;
+
+            // Draw connection lines between major cities
+            function drawConnections() {
+                const svg = connectionLines;
+                svg.innerHTML = '';
+                
+                const majorCities = cities.filter(c => c.projects > 30);
+                for (let i = 0; i < majorCities.length - 1; i++) {
+                    for (let j = i + 1; j < majorCities.length; j++) {
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        const x1 = majorCities[i].x;
+                        const y1 = majorCities[i].y;
+                        const x2 = majorCities[j].x;
+                        const y2 = majorCities[j].y;
+                        const distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                        const opacity = Math.max(0.1, 0.3 - distance / 200);
+                        
+                        line.setAttribute('x1', x1 + '%');
+                        line.setAttribute('y1', y1 + '%');
+                        line.setAttribute('x2', x2 + '%');
+                        line.setAttribute('y2', y2 + '%');
+                        line.setAttribute('stroke', '#FE9A00');
+                        line.setAttribute('stroke-width', '0.5');
+                        line.setAttribute('opacity', opacity);
+                        line.setAttribute('stroke-dasharray', '4 4');
+                        svg.appendChild(line);
+                    }
+                }
+            }
+            drawConnections();
+
+            // Activity Feed
+            function addActivityItem(city) {
+                const activities = [
+                    `New solar installation completed in ${city.name}`,
+                    `${city.name} added ${city.newProjects || 1} new projects`,
+                    `Solar panel installation in progress at ${city.name}`,
+                    `${city.name} reaches ${city.projects} total installations`,
+                    `Community solar project launched in ${city.name}`,
+                    `${city.newProjects || 1} new EPC partners joined in ${city.name}`
+                ];
+                const randomActivity = activities[Math.floor(Math.random() * activities.length)];
+                
+                const item = document.createElement('div');
+                const time = new Date();
+                const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                
+                item.className = 'bg-white/5 rounded-xl p-3 border border-white/5 animate-slideIn';
+                item.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="w-2 h-2 rounded-full bg-[#FE9A00] mt-1.5 animate-pulse"></div>
+                        <div>
+                            <div class="text-sm text-gray-300">${randomActivity}</div>
+                            <div class="text-xs text-gray-500 mt-1">${timeStr}</div>
+                        </div>
+                    </div>
+                `;
+                
+                feedContainer.prepend(item);
+                
+                // Keep only last 20 items
+                while (feedContainer.children.length > 20) {
+                    feedContainer.removeChild(feedContainer.lastChild);
+                }
+            }
+
+            // Initial feed items
+            cities.slice(0, 5).forEach((city, i) => {
+                setTimeout(() => addActivityItem(city), i * 300);
+            });
+
+            // Random activity updates
+            setInterval(() => {
+                const randomCity = cities[Math.floor(Math.random() * cities.length)];
+                addActivityItem(randomCity);
+                
+                // Update live projects count
+                const current = parseInt(liveProjectsEl.textContent);
+                const delta = Math.floor(Math.random() * 3) - 1;
+                liveProjectsEl.textContent = Math.max(200, current + delta);
+            }, 5000);
+
+            // City Detail Modal
+            function showCityDetails(city) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-fadeIn';
+                modal.innerHTML = `
+                    <div class="bg-[#141414] border border-white/10 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-2xl font-bold text-white">${city.name}</h3>
+                                <p class="text-gray-400 text-sm mt-1">${city.description}</p>
+                            </div>
+                            <button class="close-modal text-gray-400 hover:text-white text-2xl">&times;</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 my-6">
+                            <div class="bg-white/5 rounded-xl p-4 text-center">
+                                <div class="text-2xl font-bold text-[#FE9A00]">${city.projects}</div>
+                                <div class="text-xs text-gray-400">Total Projects</div>
+                            </div>
+                            <div class="bg-white/5 rounded-xl p-4 text-center">
+                                <div class="text-2xl font-bold text-green-400">${city.newProjects || 0}</div>
+                                <div class="text-xs text-gray-400">New This Week</div>
+                            </div>
+                            <div class="bg-white/5 rounded-xl p-4 text-center col-span-2">
+                                <div class="text-lg font-bold text-yellow-400">${city.status === 'high' ? '🔥 High Activity' : city.status === 'new' ? '✨ Emerging Market' : '📈 Steady Growth'}</div>
+                                <div class="text-xs text-gray-400">Market Status</div>
+                            </div>
+                        </div>
+                        <button class="w-full py-3 bg-[#FE9A00] text-black font-bold rounded-full hover:scale-105 transition">View Projects in ${city.name} →</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // Close modal
+                modal.querySelector('.close-modal').addEventListener('click', () => modal.remove());
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) modal.remove();
+                });
+            }
+
+            // Add styles for animations
+            const styleSheet = document.createElement('style');
+            styleSheet.textContent = `
+                @keyframes slideIn {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-slideIn { animation: slideIn 0.5s ease-out; }
+                
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+                
+                /* Scrollbar styling for feed */
+                #activity-feed::-webkit-scrollbar {
+                    width: 3px;
+                }
+                #activity-feed::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                #activity-feed::-webkit-scrollbar-thumb {
+                    background: #FE9A00;
+                    border-radius: 10px;
+                }
+            `;
+            document.head.appendChild(styleSheet);
+
+            console.log('🗺️ Enhanced Live Map loaded!');
+            console.log(`📍 Tracking ${cities.length} cities with ${totalProjects} active projects`);
+        })();
+
+        // ==============================================================
+        // 13. SMART ROI ANALYTICS
+        // ==============================================================
+                // ==============================================================
+        // 13. SMART ROI ANALYTICS - FIXED (Rupees)
+        // ==============================================================
+        (function initAnalytics() {
+            const chart = document.getElementById('projection-chart');
+            if (!chart) return;
+
+            let currentSize = 5;
+
+            function updateChart(size) {
+                chart.innerHTML = '';
+                // Convert to Rupees (1 USD = 85 INR)
+                const yearlySavingsUSD = size * 500;
+                const yearlySavingsINR = yearlySavingsUSD * 85;
+                const years = 5;
+
+                for (let i = 1; i <= years; i++) {
+                    const bar = document.createElement('div');
+                    const height = ((i / years) * 80 + 20);
+                    bar.className = 'flex-1 flex flex-col items-center gap-2';
+                    bar.innerHTML = `
+                        <div class="w-full bg-gradient-to-t from-[#FE9A00]/20 to-[#FE9A00] rounded-t-lg transition-all duration-500 hover:scale-105 chart-bar" style="height: ${height}%; min-height: 20px;"></div>
+                        <span class="text-xs text-gray-400">Year ${i}</span>
+                        <span class="text-xs text-[#FE9A00] font-bold">₹${(yearlySavingsINR * i).toLocaleString('en-IN')}</span>
+                    `;
+                    chart.appendChild(bar);
+                }
+
+                const totalSavings = document.getElementById('total-savings');
+                if (totalSavings) totalSavings.textContent = (yearlySavingsINR * years).toLocaleString('en-IN');
+
+                const roiPercent = document.getElementById('roi-percent');
+                if (roiPercent) roiPercent.textContent = Math.round(size * 12);
+
+                const payback = document.getElementById('payback');
+                if (payback) payback.textContent = (5 - size * 0.15).toFixed(1);
+
+                const totalCo2 = document.getElementById('total-co2');
+                if (totalCo2) totalCo2.textContent = Math.round(size * 15);
+            }
+
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.size-btn').forEach(b => {
+                        b.className = b.className.replace(' bg-[#FE9A00]/20 text-[#FE9A00]',
+                        ' border border-white/20');
+                    });
+                    this.className += ' bg-[#FE9A00]/20 text-[#FE9A00]';
+                    currentSize = parseInt(this.dataset.size);
+                    updateChart(currentSize);
+                });
+            });
+
+            updateChart(5);
+        })();
+
+        // ==============================================================
+        // 14. GAMIFIED REFERRAL DASHBOARD
+        // ==============================================================
+        (function initReferral() {
+            const users = [
+                { name: 'Ananya S.', referrals: 45 },
+                { name: 'Vikram R.', referrals: 32 },
+                { name: 'Priya M.', referrals: 28 },
+                { name: 'Arjun K.', referrals: 21 },
+                { name: 'Neha P.', referrals: 18 },
+                { name: 'You', referrals: 7 }
+            ];
+
+            const leaderboard = document.getElementById('leaderboard');
+            if (!leaderboard) return;
+
+            const sortedUsers = users.sort((a, b) => b.referrals - a.referrals);
+
+            leaderboard.innerHTML = '';
+            sortedUsers.forEach((user, index) => {
+                const isYou = user.name === 'You';
+                const entry = document.createElement('div');
+                entry.className =
+                    `leaderboard-entry flex justify-between items-center p-3 rounded-xl ${isYou ? 'bg-[#FE9A00]/10 border border-[#FE9A00]/20' : 'hover:bg-white/5'} transition`;
+                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`;
+                entry.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-400' : 'text-gray-500'} font-bold">${rankEmoji}</span>
+                        <span class="${isYou ? 'text-[#FE9A00] font-bold' : ''}">${user.name}</span>
+                        ${isYou ? '<span class="text-xs bg-[#FE9A00]/20 text-[#FE9A00] px-2 py-0.5 rounded-full">You</span>' : ''}
+                    </div>
+                    <span class="font-bold ${index < 3 ? 'text-[#FE9A00]' : 'text-gray-400'}">${user.referrals}</span>
+                `;
+                leaderboard.appendChild(entry);
+            });
+
+            const userRank = sortedUsers.findIndex(u => u.name === 'You') + 1;
+            const userRankEl = document.getElementById('user-rank');
+            if (userRankEl) userRankEl.textContent = userRank;
+
+            const userReferrals = document.getElementById('user-referrals');
+            if (userReferrals) userReferrals.textContent = '7';
+
+            const progressBar = document.getElementById('progress-bar');
+            if (progressBar) progressBar.style.width = '35%';
+
+            const nextMilestone = document.getElementById('next-milestone');
+            if (nextMilestone) nextMilestone.textContent = '10';
+        })();
+
+        // ==============================================================
+        // 15. SOLAR QUIZ
+        // ==============================================================
+                        // ==============================================================
+        // 15. SOLAR QUIZ - ENHANCED VERSION
+        // ==============================================================
+        (function initQuiz() {
+            const questions = [
+                {
+                    question: 'What is your average monthly electricity bill?',
+                    options: ['₹500-1,000', '₹1,000-2,000', '₹2,000-4,000', '₹4,000+'],
+                    scores: [1, 3, 5, 7],
+                    hint: 'Higher bills mean more savings potential!'
+                },
+                {
+                    question: 'What type of roof do you have?',
+                    options: ['Flat roof', 'Sloped roof', 'Flat with shading', 'Not sure'],
+                    scores: [5, 4, 2, 1],
+                    hint: 'Flat roofs are ideal for solar panels.'
+                },
+                {
+                    question: 'How many people live in your home?',
+                    options: ['1-2', '3-4', '5-6', '7+'],
+                    scores: [2, 4, 6, 7],
+                    hint: 'More people = more energy consumption.'
+                },
+                {
+                    question: 'What is your main reason for going solar?',
+                    options: ['Save money', 'Environment', 'Energy independence', 'All of the above'],
+                    scores: [3, 3, 3, 7],
+                    hint: 'Multiple motivations = stronger commitment!'
+                },
+                {
+                    question: 'When do you plan to install solar?',
+                    options: ['Immediately', 'Within 6 months', 'Within a year', 'Just exploring'],
+                    scores: [7, 5, 3, 1],
+                    hint: 'Early adoption gets you maximum savings!'
+                }
+            ];
+
+            let currentQuestion = 0;
+            let totalScore = 0;
+            const container = document.getElementById('quiz-container');
+            const result = document.getElementById('quiz-result');
+            const optionsContainer = document.getElementById('quiz-options');
+
+            if (!container || !result || !optionsContainer) return;
+
+            function loadQuestion() {
+                const q = questions[currentQuestion];
+                const questionNumber = document.getElementById('question-number');
+                const questionText = document.getElementById('question-text');
+                const progressBar = document.getElementById('quiz-progress-bar');
+                const currentScore = document.getElementById('current-score');
+
+                if (questionNumber) questionNumber.textContent = currentQuestion + 1;
+                if (questionText) questionText.textContent = q.question;
+                if (currentScore) currentScore.textContent = totalScore;
+                
+                // Update progress bar
+                if (progressBar) {
+                    const progress = ((currentQuestion) / questions.length) * 100;
+                    progressBar.style.width = progress + '%';
+                }
+
+                optionsContainer.innerHTML = '';
+                q.options.forEach((option, index) => {
+                    const btn = document.createElement('button');
+                    btn.className =
+                        'quiz-option px-6 py-4 border border-white/20 rounded-xl hover:border-[#FE9A00] hover:bg-[#FE9A00]/10 transition text-left w-full text-sm md:text-base';
+                    btn.textContent = option;
+                    btn.addEventListener('click', () => {
+                        // Add selected animation
+                        btn.classList.add('selected');
+                        btn.style.borderColor = '#FE9A00';
+                        btn.style.background = 'rgba(254, 154, 0, 0.2)';
+                        
+                        // Disable all options
+                        document.querySelectorAll('.quiz-option').forEach(b => {
+                            b.style.pointerEvents = 'none';
+                        });
+                        
+                        // Show hint
+                        const hintDiv = document.createElement('div');
+                        hintDiv.className = 'mt-4 text-sm text-[#FE9A00] animate-pulse';
+                        hintDiv.textContent = '💡 ' + q.hint;
+                        optionsContainer.appendChild(hintDiv);
+
+                        totalScore += q.scores[index];
+                        currentQuestion++;
+                        
+                        setTimeout(() => {
+                            if (currentQuestion < questions.length) {
+                                loadQuestion();
+                            } else {
+                                showResult();
+                            }
+                        }, 1200);
+                    });
+                    optionsContainer.appendChild(btn);
+                });
+            }
+
+            function showResult() {
+                container.classList.add('hidden');
+                result.classList.remove('hidden');
+                
+                // Update progress bar to 100%
+                const progressBar = document.getElementById('quiz-progress-bar');
+                if (progressBar) progressBar.style.width = '100%';
+                
+                // Calculate percentage
+                const maxScore = 35; // 7 + 5 + 7 + 7 + 7 = 33 (rounded to 35)
+                const percentage = Math.round((totalScore / maxScore) * 100);
+                const finalScore = document.getElementById('final-score');
+                if (finalScore) finalScore.textContent = totalScore;
+                
+                // Determine result based on score
+                let emoji, title, desc, message;
+                
+                if (percentage >= 80) {
+                    emoji = '🌟';
+                    title = 'Solar Expert!';
+                    desc = 'You\'re a solar energy expert!';
+                    message = 'You have excellent knowledge about solar energy. You\'re ready to make the switch today! 🚀';
+                } else if (percentage >= 60) {
+                    emoji = '☀️';
+                    title = 'Solar Ready!';
+                    desc = 'You have good solar knowledge!';
+                    message = 'You\'re well-informed about solar benefits. A consultation would help you get started! 💡';
+                } else if (percentage >= 40) {
+                    emoji = '🌱';
+                    title = 'Solar Learner!';
+                    desc = 'You\'re on the right track!';
+                    message = 'You understand the basics. Our free guide can help you learn more about solar energy! 📚';
+                } else {
+                    emoji = '💡';
+                    title = 'Solar Curious!';
+                    desc = 'Everyone starts somewhere!';
+                    message = 'Solar energy is new to you. Get our beginner\'s guide and start your solar journey today! 🎯';
+                }
+                
+                document.getElementById('result-emoji').textContent = emoji;
+                document.getElementById('result-title').textContent = title;
+                document.getElementById('result-desc').textContent = desc;
+                document.getElementById('result-message').textContent = message;
+                
+                // Animate the score
+                let count = 0;
+                const scoreElement = document.getElementById('final-score');
+                if (scoreElement) {
+                    const interval = setInterval(() => {
+                        if (count >= totalScore) {
+                            clearInterval(interval);
+                            return;
+                        }
+                        count++;
+                        scoreElement.textContent = count;
+                    }, 50);
+                }
+                
+                // Update current score
+                const currentScore = document.getElementById('current-score');
+                if (currentScore) currentScore.textContent = totalScore;
+            }
+
+            // Retry quiz
+            document.getElementById('retry-quiz').addEventListener('click', function() {
+                currentQuestion = 0;
+                totalScore = 0;
+                container.classList.remove('hidden');
+                result.classList.add('hidden');
+                loadQuestion();
+            });
+
+            loadQuestion();
+        })();
+
+        console.log('🌞 Lumenor Enhanced v3 loaded successfully!');
+        console.log('✨ All features active: Simulator, Map, Analytics, Leaderboard, Quiz');
+    </script>
+</body>
+</html>
+
+can we also make more interactive in live simulation section its not up to the mark
