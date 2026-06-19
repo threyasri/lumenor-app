@@ -976,8 +976,8 @@
             startNewLoop();
         })();
 
-        // --------------------------------------------------------------
-        // 2. COUNTERS (Live fluctuation)
+                // --------------------------------------------------------------
+        // 2. COUNTERS (Live fluctuation) - FIXED VERSION
         // --------------------------------------------------------------
         function animateCounter(element, target, duration = 1500) {
             const start = parseInt(element.textContent.replace(/,/g, '')) || 0;
@@ -995,9 +995,16 @@
         }
 
         function initMetrics() {
+            console.log("initMetrics called");
+            
             const elProjects = document.getElementById('metric-projects');
             const elEpcs = document.getElementById('metric-epcs');
             const elInstallers = document.getElementById('metric-installers');
+
+            if (!elProjects || !elEpcs || !elInstallers) {
+                console.log("Metric elements not found!");
+                return;
+            }
 
             const targets = {
                 projects: parseInt(elProjects.dataset.target) || 1247,
@@ -1005,22 +1012,20 @@
                 installers: parseInt(elInstallers.dataset.target) || 849
             };
 
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        animateCounter(elProjects, targets.projects);
-                        animateCounter(elEpcs, targets.epcs);
-                        animateCounter(elInstallers, targets.installers);
-                        observer.disconnect();
-                    }
-                });
-            }, { threshold: 0.5 });
-            observer.observe(elProjects);
+            console.log("Starting counters with targets:", targets);
 
+            // Start counters immediately
+            setTimeout(() => {
+                animateCounter(elProjects, targets.projects);
+                animateCounter(elEpcs, targets.epcs);
+                animateCounter(elInstallers, targets.installers);
+            }, 300);
+
+            // Live fluctuation every 4 seconds
             setInterval(() => {
-                const currentP = parseInt(elProjects.textContent) || targets.projects;
-                const currentE = parseInt(elEpcs.textContent) || targets.epcs;
-                const currentI = parseInt(elInstallers.textContent) || targets.installers;
+                const currentP = parseInt(elProjects.textContent.replace(/,/g, '')) || targets.projects;
+                const currentE = parseInt(elEpcs.textContent.replace(/,/g, '')) || targets.epcs;
+                const currentI = parseInt(elInstallers.textContent.replace(/,/g, '')) || targets.installers;
 
                 const deltaP = Math.floor(Math.random() * 6) - 2;
                 const deltaE = Math.floor(Math.random() * 4) - 1;
@@ -1031,27 +1036,47 @@
                 elInstallers.textContent = Math.max(200, currentI + deltaI);
             }, 4000);
         }
-        initMetrics();
 
-        // --------------------------------------------------------------
-        // 3. ROI CALCULATOR
-        // --------------------------------------------------------------
+        // Initialize metrics with multiple fallbacks
+        function initMetricsWithFallback() {
+            initMetrics();
+        }
+
+        // Try immediate, then on DOM ready, then on load
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(initMetricsWithFallback, 100);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initMetricsWithFallback, 200);
+        });
+        
+        window.addEventListener('load', function() {
+            setTimeout(initMetricsWithFallback, 300);
+        });
+
                 // --------------------------------------------------------------
         // 3. ROI CALCULATOR - COMPLETE FIXED VERSION
         // --------------------------------------------------------------
         function updateROI() {
-            console.log("updateROI called"); // Debug log
+            console.log("updateROI called");
             
             // Get values from inputs
             const areaInput = document.getElementById('roi-area');
             const billInput = document.getElementById('roi-bill');
             
-            const area = parseFloat(areaInput ? areaInput.value : 0) || 0;
-            const bill = parseFloat(billInput ? billInput.value : 0) || 0;
+            if (!areaInput || !billInput) {
+                console.log("ROI inputs not found!");
+                return;
+            }
             
-            console.log("Area:", area, "Bill:", bill); // Debug log
+            const area = parseFloat(areaInput.value) || 0;
+            const bill = parseFloat(billInput.value) || 0;
+            
+            console.log("Area:", area, "Bill:", bill);
 
-            // Convert to Rupees (1 USD = 85 INR)
+            // Calculate savings in Rupees (1 USD = 85 INR)
+            // Formula: bill * 12 months * 85% savings * 85 INR per USD
             const yearlySavingsINR = bill * 12 * 0.85 * 85;
             const co2 = area * 0.35;
 
@@ -1062,42 +1087,50 @@
             if (savingsElement) {
                 savingsElement.textContent = Math.round(yearlySavingsINR).toLocaleString('en-IN');
                 console.log("Savings updated to:", savingsElement.textContent);
-            } else {
-                console.log("Savings element not found!");
             }
             
             if (co2Element) {
                 co2Element.textContent = co2.toFixed(1);
                 console.log("CO2 updated to:", co2Element.textContent);
-            } else {
-                console.log("CO2 element not found!");
             }
         }
 
-        // Set up event listeners when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM loaded - setting up ROI calculator");
+        // Set up event listeners for ROI calculator
+        function initROI() {
+            console.log("initROI called");
             
             const areaInput = document.getElementById('roi-area');
             const billInput = document.getElementById('roi-bill');
             
             if (areaInput) {
-                areaInput.addEventListener('input', updateROI);
+                // Remove any existing listeners by cloning
+                const newArea = areaInput.cloneNode(true);
+                areaInput.parentNode.replaceChild(newArea, areaInput);
+                newArea.addEventListener('input', updateROI);
+                newArea.addEventListener('change', updateROI);
                 console.log("Area input listener added");
-            } else {
-                console.log("Area input not found!");
             }
             
             if (billInput) {
-                billInput.addEventListener('input', updateROI);
+                const newBill = billInput.cloneNode(true);
+                billInput.parentNode.replaceChild(newBill, billInput);
+                newBill.addEventListener('input', updateROI);
+                newBill.addEventListener('change', updateROI);
                 console.log("Bill input listener added");
-            } else {
-                console.log("Bill input not found!");
             }
             
             // Initial calculation
-            setTimeout(updateROI, 200);
+            setTimeout(updateROI, 500);
+        }
+
+        // Initialize ROI with fallbacks
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initROI, 300);
         });
+        
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(initROI, 400);
+        }
 
         // --------------------------------------------------------------
         // 4. 3D TILT CARDS
@@ -1859,18 +1892,24 @@
         })();
 
         // ==============================================================
-        // 13. SMART ROI ANALYTICS
-        // ==============================================================
-                // ==============================================================
-        // 13. SMART ROI ANALYTICS - FIXED (Rupees)
+        // 13. SMART ROI ANALYTICS - COMPLETE FIXED VERSION
         // ==============================================================
         (function initAnalytics() {
+            console.log("initAnalytics called");
+            
             const chart = document.getElementById('projection-chart');
-            if (!chart) return;
+            if (!chart) {
+                console.log("Chart element not found!");
+                return;
+            }
 
             let currentSize = 5;
 
             function updateChart(size) {
+                console.log("updateChart called with size:", size);
+                
+                if (!chart) return;
+                
                 chart.innerHTML = '';
                 // Convert to Rupees (1 USD = 85 INR)
                 const yearlySavingsUSD = size * 500;
@@ -1890,23 +1929,33 @@
                 }
 
                 const totalSavings = document.getElementById('total-savings');
-                if (totalSavings) totalSavings.textContent = (yearlySavingsINR * years).toLocaleString('en-IN');
+                if (totalSavings) {
+                    totalSavings.textContent = (yearlySavingsINR * years).toLocaleString('en-IN');
+                }
 
                 const roiPercent = document.getElementById('roi-percent');
-                if (roiPercent) roiPercent.textContent = Math.round(size * 12);
+                if (roiPercent) {
+                    roiPercent.textContent = Math.round(size * 12);
+                }
 
                 const payback = document.getElementById('payback');
-                if (payback) payback.textContent = (5 - size * 0.15).toFixed(1);
+                if (payback) {
+                    payback.textContent = (5 - size * 0.15).toFixed(1);
+                }
 
                 const totalCo2 = document.getElementById('total-co2');
-                if (totalCo2) totalCo2.textContent = Math.round(size * 15);
+                if (totalCo2) {
+                    totalCo2.textContent = Math.round(size * 15);
+                }
+                
+                console.log("Chart updated for size:", size);
             }
 
+            // Add click listeners to size buttons
             document.querySelectorAll('.size-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     document.querySelectorAll('.size-btn').forEach(b => {
-                        b.className = b.className.replace(' bg-[#FE9A00]/20 text-[#FE9A00]',
-                        ' border border-white/20');
+                        b.className = b.className.replace(' bg-[#FE9A00]/20 text-[#FE9A00]', ' border border-white/20');
                     });
                     this.className += ' bg-[#FE9A00]/20 text-[#FE9A00]';
                     currentSize = parseInt(this.dataset.size);
@@ -1914,7 +1963,19 @@
                 });
             });
 
-            updateChart(5);
+            // Initial chart load with multiple attempts
+            function loadInitialChart() {
+                try {
+                    updateChart(5);
+                    console.log("Initial analytics chart loaded");
+                } catch(e) {
+                    console.log("Chart load failed, retrying...", e);
+                    setTimeout(loadInitialChart, 500);
+                }
+            }
+            
+            setTimeout(loadInitialChart, 500);
+            setTimeout(loadInitialChart, 1000);
         })();
 
         // ==============================================================
@@ -1967,13 +2028,12 @@
             if (nextMilestone) nextMilestone.textContent = '10';
         })();
 
-        // ==============================================================
-        // 15. SOLAR QUIZ
-        // ==============================================================
-                        // ==============================================================
-        // 15. SOLAR QUIZ - ENHANCED VERSION
+                // ==============================================================
+        // 15. SOLAR QUIZ - COMPLETE FIXED VERSION
         // ==============================================================
         (function initQuiz() {
+            console.log("initQuiz called");
+            
             const questions = [
                 {
                     question: 'What is your average monthly electricity bill?',
@@ -2013,7 +2073,10 @@
             const result = document.getElementById('quiz-result');
             const optionsContainer = document.getElementById('quiz-options');
 
-            if (!container || !result || !optionsContainer) return;
+            if (!container || !result || !optionsContainer) {
+                console.log("Quiz elements not found!");
+                return;
+            }
 
             function loadQuestion() {
                 const q = questions[currentQuestion];
@@ -2038,11 +2101,11 @@
                     btn.className =
                         'quiz-option px-6 py-4 border border-white/20 rounded-xl hover:border-[#FE9A00] hover:bg-[#FE9A00]/10 transition text-left w-full text-sm md:text-base';
                     btn.textContent = option;
-                    btn.addEventListener('click', () => {
+                    btn.addEventListener('click', function() {
                         // Add selected animation
-                        btn.classList.add('selected');
-                        btn.style.borderColor = '#FE9A00';
-                        btn.style.background = 'rgba(254, 154, 0, 0.2)';
+                        this.classList.add('selected');
+                        this.style.borderColor = '#FE9A00';
+                        this.style.background = 'rgba(254, 154, 0, 0.2)';
                         
                         // Disable all options
                         document.querySelectorAll('.quiz-option').forEach(b => {
@@ -2056,6 +2119,7 @@
                         optionsContainer.appendChild(hintDiv);
 
                         totalScore += q.scores[index];
+                        console.log("Score added:", q.scores[index], "Total:", totalScore);
                         currentQuestion++;
                         
                         setTimeout(() => {
@@ -2071,6 +2135,8 @@
             }
 
             function showResult() {
+                console.log("showResult called, totalScore:", totalScore);
+                
                 container.classList.add('hidden');
                 result.classList.remove('hidden');
                 
@@ -2079,10 +2145,15 @@
                 if (progressBar) progressBar.style.width = '100%';
                 
                 // Calculate percentage
-                const maxScore = 35; // 7 + 5 + 7 + 7 + 7 = 33 (rounded to 35)
+                const maxScore = 35;
                 const percentage = Math.round((totalScore / maxScore) * 100);
+                
+                // UPDATE FINAL SCORE - FIXED!
                 const finalScore = document.getElementById('final-score');
-                if (finalScore) finalScore.textContent = totalScore;
+                if (finalScore) {
+                    finalScore.textContent = totalScore;
+                    console.log("Final score set to:", totalScore);
+                }
                 
                 // Determine result based on score
                 let emoji, title, desc, message;
@@ -2109,40 +2180,41 @@
                     message = 'Solar energy is new to you. Get our beginner\'s guide and start your solar journey today! 🎯';
                 }
                 
-                document.getElementById('result-emoji').textContent = emoji;
-                document.getElementById('result-title').textContent = title;
-                document.getElementById('result-desc').textContent = desc;
-                document.getElementById('result-message').textContent = message;
+                const resultEmoji = document.getElementById('result-emoji');
+                const resultTitle = document.getElementById('result-title');
+                const resultDesc = document.getElementById('result-desc');
+                const resultMessage = document.getElementById('result-message');
                 
-                // Animate the score
-                let count = 0;
-                const scoreElement = document.getElementById('final-score');
-                if (scoreElement) {
-                    const interval = setInterval(() => {
-                        if (count >= totalScore) {
-                            clearInterval(interval);
-                            return;
-                        }
-                        count++;
-                        scoreElement.textContent = count;
-                    }, 50);
-                }
+                if (resultEmoji) resultEmoji.textContent = emoji;
+                if (resultTitle) resultTitle.textContent = title;
+                if (resultDesc) resultDesc.textContent = desc;
+                if (resultMessage) resultMessage.textContent = message;
                 
-                // Update current score
+                // Update current score display
                 const currentScore = document.getElementById('current-score');
                 if (currentScore) currentScore.textContent = totalScore;
+                
+                console.log("Quiz complete! Score:", totalScore, "Percentage:", percentage);
             }
 
             // Retry quiz
-            document.getElementById('retry-quiz').addEventListener('click', function() {
-                currentQuestion = 0;
-                totalScore = 0;
-                container.classList.remove('hidden');
-                result.classList.add('hidden');
-                loadQuestion();
-            });
+            const retryBtn = document.getElementById('retry-quiz');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', function() {
+                    currentQuestion = 0;
+                    totalScore = 0;
+                    container.classList.remove('hidden');
+                    result.classList.add('hidden');
+                    loadQuestion();
+                    console.log("Quiz reset");
+                });
+            }
 
-            loadQuestion();
+            // Initialize quiz with delay
+            setTimeout(function() {
+                loadQuestion();
+                console.log("Quiz initialized");
+            }, 300);
         })();
 
         console.log('🌞 Lumenor Enhanced v3 loaded successfully!');
@@ -2150,5 +2222,3 @@
     </script>
 </body>
 </html>
-
-can we also make more interactive in live simulation section its not up to the mark
